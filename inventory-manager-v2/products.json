@@ -1,0 +1,37 @@
+[
+ {
+  "id": 4,
+  "name": "453",
+  "category": "543",
+  "price": 345,
+  "quantity": 354
+ },
+ {
+  "id": 5,
+  "name": "123",
+  "category": "123",
+  "price": 123,
+  "quantity": 123
+ },
+ {
+  "id": 2,
+  "name": "speed400",
+  "category": "moto",
+  "price": 3000,
+  "quantity": 20
+ },
+ {
+  "id": 6,
+  "name": "1231",
+  "category": "sdf",
+  "price": 34,
+  "quantity": 34
+ },
+ {
+  "id": 3,
+  "name": "1231",
+  "category": "123",
+  "price": 123,
+  "quantity": 123
+ }
+]
