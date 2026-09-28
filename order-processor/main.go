@@ -250,7 +250,14 @@ func (app *App) handleCompleteOrder() {
 	fmt.Scan(&orderID)
 	fmt.Println()
 
-	app.setOrderStatus(orderID, "completed")
+	order, err := app.completeOrder(orderID)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Completed order:", order.ID)
 }
 
 func (app *App) handleCancelOrder() {
@@ -262,7 +269,14 @@ func (app *App) handleCancelOrder() {
 	fmt.Scan(&orderID)
 	fmt.Println()
 
-	app.setOrderStatus(orderID, "cancelled")
+	order, err :=  app.cancelOrder(orderID)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Println("Cancelled order:", order.ID)
 }
 
 func (app *App) handleListOrders() {

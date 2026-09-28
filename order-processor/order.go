@@ -105,13 +105,52 @@ func(app *App) listOrders() {
 	}
 }
 
-func(app *App) setOrderStatus(orderID int, status string) (Order, error) {
+func (app *App) completeOrder(orderID int) (Order, error) {
 	order, err := app.getOrderByID(orderID)
 	if err != nil {
 		return Order{}, err
 	}
 
-	order.Status = status
-	app.orders[orderID]  = order
+
+	if order.Status != "pending" {
+		errMsg := fmt.Sprintf("Cannot complete order, order status is %v", order.Status)
+		return Order{}, errors.New(errMsg)
+	}
+
+	for _, orderItem := range order.Items {
+		product, exists := app.products[orderItem.ProductID]
+		if (!exists) {
+			errMsg := fmt.Sprintf("Product ID: %v cannot be found", orderItem.ProductID)
+			return Order{}, errors.New(errMsg)
+		}
+
+		remainingStock := product.Stock - orderItem.Quantity
+		if remainingStock < 0 {
+			errMsg := fmt.Sprintf("Not enough stocks. You ordered: %v pcs, Remaining stock is: %v", orderItem.Quantity, product.Stock)
+			return Order{}, errors.New(errMsg)
+		}
+
+		product.Stock = remainingStock
+		app.products[orderItem.ProductID] = product
+	}
+
+	order.Status = "completed"
+	app.orders[orderID] = order
+	return order, nil
+}
+
+func (app *App) cancelOrder(orderID int) (Order, error) {
+	order, err := app.getOrderByID(orderID)
+	if err != nil {
+		return Order{}, err
+	}
+
+	if order.Status != "pending" {
+		errMsg := fmt.Sprintf("Cannot cancel order, order status is %v", order.Status)
+		return Order{}, errors.New(errMsg)
+	}
+
+	order.Status = "completed"
+	app.orders[orderID] = order
 	return order, nil
 }

@@ -23,20 +23,16 @@ func TestHelloEmpty(t *testing.T) {
 }
 */
 
-func TestgetOrderByIDNotExist(t *testing.T) {
+func TestGetOrderByIDNotExist(t *testing.T) {
 	app := App{}
 
-	orderID, err := app.getOrderByID(1)
+	_, err := app.getOrderByID(1)
 	if err == nil {
 		t.Error("Expected an error for non-existing order id, got nil")
 	}
-
-	if orderID != 0 {
-		t.Errorf("Expected orderID is 0 got %v", orderID)
-	}
 }
 
-func TestgetOrderByID(t *testing.T) {
+func TestGetOrderByID(t *testing.T) {
 	app := App{
 		orders: map[int]Order{},
 	}
@@ -48,14 +44,14 @@ func TestgetOrderByID(t *testing.T) {
 		Status: "pending",
 	}
 
-	orderID, err := app.getOrderByID(123)
+	order, err := app.getOrderByID(123)
 
 	if err != nil {
 		t.Errorf("Did not Expect an error, got %v", err)
 	}
 
-	if orderID != 123 {
-		t.Errorf("Expected orderID is 123 got %v", orderID)
+	if order.ID != 123 {
+		t.Errorf("Expected orderID is 123 got %v", order.ID)
 	}
 }
 
@@ -127,5 +123,114 @@ func TestCalculateOrderTotal(t *testing.T) {
 
 	if total != 80000 {
 		t.Errorf("Expected total is 80000 got %v", total)
+	}
+}
+
+
+func TestCompletedOrder(t *testing.T) {
+	tests := []struct {
+		name string
+		orderID int
+		orderItemID int
+		productID int
+		quantity int
+		stock int
+		orderStatus string
+		wantErr bool
+	}{
+		{"Invalid ID",         111, 1, 23, 10, 10, "pending", true},
+		{"Invalid Status",     123, 1, 23, 10, 10, "cancelled", true},
+		{"Missing Product ID", 123, 1, 55, 10, 10, "pending", true},
+		{"Not enough Stocks",  123, 1, 23, 10, 9, "pending", true},
+		{"Complete Order",     123, 1, 23, 10, 10, "pending", false},
+	}
+
+	app := App{
+		orders: map[int]Order{},
+		products: map[int]Product{},
+	}
+	
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T){
+			app.products[23] = Product{
+				ID: 23,
+				Name: "CBR 650R",
+				Price: 8000,
+				Stock: test.stock,
+			}
+
+			orderItems := append(
+				app.orders[123].Items,
+				OrderItem{
+					ProductID: test.productID,
+					Quantity: test.quantity,
+				},
+			)
+
+			app.orders[123] = Order{
+				ID: 123,
+				Items: orderItems,
+				Total: 8000,
+				Status: test.orderStatus,
+			}
+
+
+			_, err := app.completeOrder(test.orderID)
+
+			if test.wantErr && err == nil {
+				t.Error("Expected an error but got nil")
+			}
+		})
+	}
+}
+
+func TestCancelOrder(t *testing.T) {
+	tests := []struct {
+		name string
+		orderID int
+		orderStatus string
+		wantErr bool
+	}{
+		{"Invalid ID",     111, "pending", true},
+		{"Invalid Status", 123, "cancelled", true},
+		{"Cancel Order",   123, "pending", false},
+	}
+
+	app := App{
+		orders: map[int]Order{},
+		products: map[int]Product{},
+	}
+	
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T){
+			app.products[23] = Product{
+				ID: 23,
+				Name: "CBR 650R",
+				Price: 8000,
+				Stock: 10,
+			}
+
+			orderItems := append(
+				app.orders[123].Items,
+				OrderItem{
+					ProductID: 23,
+					Quantity: 10,
+				},
+			)
+
+			app.orders[123] = Order{
+				ID: 123,
+				Items: orderItems,
+				Total: 8000,
+				Status: test.orderStatus,
+			}
+
+
+			_, err := app.cancelOrder(test.orderID)
+
+			if test.wantErr && err == nil {
+				t.Error("Expected an error but got nil")
+			}
+		})
 	}
 }
