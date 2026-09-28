@@ -6,15 +6,15 @@ import (
 )
 
 type Order struct {
-	ID int	
-	Items []OrderItem
-	Total float64	
-	Status string	
+	ID     int
+	Items  []OrderItem
+	Total  float64
+	Status string
 }
 
 type OrderItem struct {
-	ProductID int	
-	Quantity int	
+	ProductID int
+	Quantity  int
 }
 
 func (app *App) getOrderByID(orderID int) (Order, error) {
@@ -30,9 +30,9 @@ func (app *App) createOrder(
 	orderItems []OrderItem,
 ) (Order, error) {
 	/*
-	What is the total?
-	What ID should this order receive?
-	What status should it have?
+		What is the total?
+		What ID should this order receive?
+		What status should it have?
 	*/
 
 	var total float64
@@ -40,7 +40,7 @@ func (app *App) createOrder(
 		product, err := app.getProductByID(orderItem.ProductID)
 
 		// Does each product exist?
-		if (err != nil) {
+		if err != nil {
 			errMsg := fmt.Sprintf("Product ID: %v cannot be found", orderItem.ProductID)
 			return Order{}, errors.New(errMsg)
 		}
@@ -51,7 +51,7 @@ func (app *App) createOrder(
 		}
 
 		// Is enough stock available?
-		if product.Stock - orderItem.Quantity < 0 {
+		if product.Stock-orderItem.Quantity < 0 {
 			return Order{}, errors.New("Not enough stock for the quantity inputted.")
 		}
 
@@ -60,9 +60,9 @@ func (app *App) createOrder(
 
 	id := app.nextOrderID
 	newOrder := Order{
-		ID: id,
-		Items: orderItems,
-		Total: total,
+		ID:     id,
+		Items:  orderItems,
+		Total:  total,
 		Status: "pending",
 	}
 	app.orders[id] = newOrder
@@ -94,13 +94,13 @@ func (app *App) calculateOrderTotal(orderID int) (float64, error) {
 	return total, nil
 }
 
-func(app *App) listOrders() {
+func (app *App) listOrders() {
 	for _, order := range app.orders {
 		fmt.Printf("%v %v items $%v %v \n", order.ID, len(order.Items), order.Total, order.Status)
 
 		for _, orderItem := range order.Items {
 			fmt.Println("= Order Items =")
-			fmt.Printf("Product ID: %v %v Pcs | Product Name: %v Product Price Per Piece: $%v \n", orderItem.ProductID, orderItem.Quantity, app.products[orderItem.ProductID].Name, app.products[orderItem.ProductID].Price) 
+			fmt.Printf("Product ID: %v %v Pcs | Product Name: %v Product Price Per Piece: $%v \n", orderItem.ProductID, orderItem.Quantity, app.products[orderItem.ProductID].Name, app.products[orderItem.ProductID].Price)
 		}
 	}
 }
@@ -111,15 +111,19 @@ func (app *App) completeOrder(orderID int) (Order, error) {
 		return Order{}, err
 	}
 
-
 	if order.Status != "pending" {
 		errMsg := fmt.Sprintf("Cannot complete order, order status is %v", order.Status)
 		return Order{}, errors.New(errMsg)
 	}
 
+	if len(order.Items) < 1 {
+		return Order{}, errors.New("Order does not have items")
+	}
+
+	productIds := map[int]int{}
 	for _, orderItem := range order.Items {
 		product, exists := app.products[orderItem.ProductID]
-		if (!exists) {
+		if !exists {
 			errMsg := fmt.Sprintf("Product ID: %v cannot be found", orderItem.ProductID)
 			return Order{}, errors.New(errMsg)
 		}
@@ -130,6 +134,17 @@ func (app *App) completeOrder(orderID int) (Order, error) {
 			return Order{}, errors.New(errMsg)
 		}
 
+		_, exists = productIds[orderItem.ProductID]
+		if exists {
+			return Order{}, errors.New("Invalid Order, Duplicate Product ID")
+		}
+
+		productIds[orderItem.ProductID] = orderItem.ProductID
+	}
+
+	for _, orderItem := range order.Items {
+		product, _ := app.products[orderItem.ProductID]
+		remainingStock := product.Stock - orderItem.Quantity
 		product.Stock = remainingStock
 		app.products[orderItem.ProductID] = product
 	}
@@ -150,7 +165,7 @@ func (app *App) cancelOrder(orderID int) (Order, error) {
 		return Order{}, errors.New(errMsg)
 	}
 
-	order.Status = "completed"
+	order.Status = "cancelled"
 	app.orders[orderID] = order
 	return order, nil
 }

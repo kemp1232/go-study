@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -38,9 +39,9 @@ func TestGetOrderByID(t *testing.T) {
 	}
 
 	app.orders[123] = Order{
-		ID: 123,
-		Items: []OrderItem{},
-		Total: 8000,
+		ID:     123,
+		Items:  []OrderItem{},
+		Total:  8000,
 		Status: "pending",
 	}
 
@@ -55,7 +56,6 @@ func TestGetOrderByID(t *testing.T) {
 	}
 }
 
-
 func TestCalculateOrderTotalMissingProduct(t *testing.T) {
 	app := App{
 		orders: map[int]Order{},
@@ -65,14 +65,14 @@ func TestCalculateOrderTotalMissingProduct(t *testing.T) {
 		app.orders[123].Items,
 		OrderItem{
 			ProductID: 1,
-			Quantity: 10,
+			Quantity:  10,
 		},
 	)
 
 	app.orders[123] = Order{
-		ID: 123,
-		Items: orderItems,
-		Total: 8000,
+		ID:     123,
+		Items:  orderItems,
+		Total:  8000,
 		Status: "pending",
 	}
 
@@ -89,7 +89,7 @@ func TestCalculateOrderTotalMissingProduct(t *testing.T) {
 
 func TestCalculateOrderTotal(t *testing.T) {
 	app := App{
-		orders: map[int]Order{},
+		orders:   map[int]Order{},
 		products: map[int]Product{},
 	}
 
@@ -97,20 +97,20 @@ func TestCalculateOrderTotal(t *testing.T) {
 		app.orders[123].Items,
 		OrderItem{
 			ProductID: 1,
-			Quantity: 10,
+			Quantity:  10,
 		},
 	)
 
 	app.orders[123] = Order{
-		ID: 123,
-		Items: orderItems,
-		Total: 0,
+		ID:     123,
+		Items:  orderItems,
+		Total:  0,
 		Status: "pending",
 	}
 
 	app.products[1] = Product{
-		ID: 1,
-		Name: "CBR 650R",
+		ID:    1,
+		Name:  "CBR 650R",
 		Price: 8000,
 		Stock: 20,
 	}
@@ -126,35 +126,36 @@ func TestCalculateOrderTotal(t *testing.T) {
 	}
 }
 
-
 func TestCompletedOrder(t *testing.T) {
 	tests := []struct {
-		name string
-		orderID int
+		name        string
+		orderID     int
 		orderItemID int
-		productID int
-		quantity int
-		stock int
+		productID   int
+		quantity    int
+		stock       int
 		orderStatus string
-		wantErr bool
+		wantErr     bool
 	}{
-		{"Invalid ID",         111, 1, 23, 10, 10, "pending", true},
-		{"Invalid Status",     123, 1, 23, 10, 10, "cancelled", true},
+		{"Invalid ID", 111, 1, 23, 10, 10, "pending", true},
+		{"Invalid Status", 123, 1, 23, 10, 10, "cancelled", true},
+		{"Reject Empty Orders", 1, 1, 23, 10, 10, "pending", true},
+		{"Duplicate Order", 2, 1, 23, 10, 10, "pending", true},
 		{"Missing Product ID", 123, 1, 55, 10, 10, "pending", true},
-		{"Not enough Stocks",  123, 1, 23, 10, 9, "pending", true},
-		{"Complete Order",     123, 1, 23, 10, 10, "pending", false},
+		{"Not enough Stocks", 123, 1, 23, 10, 9, "pending", true},
+		{"Complete Order", 123, 1, 23, 10, 10, "pending", false},
 	}
 
-	app := App{
-		orders: map[int]Order{},
-		products: map[int]Product{},
-	}
-	
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T){
+		t.Run(test.name, func(t *testing.T) {
+			app := App{
+				orders:   map[int]Order{},
+				products: map[int]Product{},
+			}
+
 			app.products[23] = Product{
-				ID: 23,
-				Name: "CBR 650R",
+				ID:    23,
+				Name:  "CBR 650R",
 				Price: 8000,
 				Stock: test.stock,
 			}
@@ -163,22 +164,77 @@ func TestCompletedOrder(t *testing.T) {
 				app.orders[123].Items,
 				OrderItem{
 					ProductID: test.productID,
-					Quantity: test.quantity,
+					Quantity:  test.quantity,
 				},
 			)
 
 			app.orders[123] = Order{
-				ID: 123,
-				Items: orderItems,
-				Total: 8000,
+				ID:     123,
+				Items:  orderItems,
+				Total:  8000,
 				Status: test.orderStatus,
 			}
 
+			app.orders[1] = Order{
+				ID:     1,
+				Items:  []OrderItem{},
+				Total:  8000,
+				Status: test.orderStatus,
+			}
 
-			_, err := app.completeOrder(test.orderID)
+			//Order with duplicate Orders
+			duplicateOrderItems := append(
+				app.orders[2].Items,
+				OrderItem{
+					ProductID: test.productID,
+					Quantity:  test.quantity,
+				},
+			)
+
+			duplicateOrderItems = append(
+				duplicateOrderItems,
+				OrderItem{
+					ProductID: test.productID,
+					Quantity:  test.quantity,
+				},
+			)
+
+			app.orders[2] = Order{
+				ID:     1,
+				Items:  duplicateOrderItems,
+				Total:  8000,
+				Status: test.orderStatus,
+			}
+
+			order, err := app.completeOrder(test.orderID)
 
 			if test.wantErr && err == nil {
 				t.Error("Expected an error but got nil")
+			}
+
+			if !test.wantErr && err != nil {
+				errMsg := fmt.Sprintf("Did not expected an error but got: %v", err)
+				t.Error(errMsg)
+			}
+
+			if !test.wantErr && err == nil {
+				if order.Status != "completed" {
+					t.Error("Order status should have been completed")
+				}
+
+				if order.Status == "completed" {
+					properProductStock := test.stock - test.quantity
+
+					if app.products[test.productID].Stock != properProductStock {
+						t.Error("Product Stock was not properly deducted")
+					}
+
+					_, errSecondTry := app.completeOrder(test.orderID)
+
+					if errSecondTry == nil {
+						t.Error("Expected an error but got nil")
+					}
+				}
 			}
 		})
 	}
@@ -186,50 +242,120 @@ func TestCompletedOrder(t *testing.T) {
 
 func TestCancelOrder(t *testing.T) {
 	tests := []struct {
-		name string
-		orderID int
+		name        string
+		orderID     int
 		orderStatus string
-		wantErr bool
+		wantErr     bool
 	}{
-		{"Invalid ID",     111, "pending", true},
+		{"Invalid ID", 111, "pending", true},
 		{"Invalid Status", 123, "cancelled", true},
-		{"Cancel Order",   123, "pending", false},
+		{"Invalid Status", 123, "completed", true},
+		{"Cancel Order", 123, "pending", false},
 	}
 
-	app := App{
-		orders: map[int]Order{},
-		products: map[int]Product{},
-	}
-	
 	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T){
+		t.Run(test.name, func(t *testing.T) {
+			app := App{
+				orders:   map[int]Order{},
+				products: map[int]Product{},
+			}
+
+			initialStock := 10
+
 			app.products[23] = Product{
-				ID: 23,
-				Name: "CBR 650R",
+				ID:    23,
+				Name:  "CBR 650R",
 				Price: 8000,
-				Stock: 10,
+				Stock: initialStock,
 			}
 
 			orderItems := append(
 				app.orders[123].Items,
 				OrderItem{
 					ProductID: 23,
-					Quantity: 10,
+					Quantity:  10,
 				},
 			)
 
 			app.orders[123] = Order{
-				ID: 123,
-				Items: orderItems,
-				Total: 8000,
+				ID:     123,
+				Items:  orderItems,
+				Total:  8000,
 				Status: test.orderStatus,
 			}
 
-
-			_, err := app.cancelOrder(test.orderID)
+			order, err := app.cancelOrder(test.orderID)
 
 			if test.wantErr && err == nil {
 				t.Error("Expected an error but got nil")
+			}
+
+			if !test.wantErr && err != nil {
+				errMsg := fmt.Sprintf("Did not expected an error but got: %v", err)
+				t.Error(errMsg)
+			}
+
+			if !test.wantErr && err == nil {
+				if order.Status != "cancelled" {
+					t.Error("Order status should have been cancelled")
+				}
+
+				if app.products[23].Stock != initialStock {
+					t.Error("Product stock still changed even if the order is cancelled")
+				}
+			}
+		})
+	}
+}
+
+func TestCreateOrder(t *testing.T) {
+	tests := []struct {
+		name      string
+		productID int
+		quantity  int
+		stock     int
+		wantErr   bool
+	}{
+		{"Invalid Product ID", 123, 10, 10, true},
+		{"Invalid Quantity", 23, 11, 10, true},
+		{"Create Order", 23, 10, 10, false},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			app := App{
+				orders:   map[int]Order{},
+				products: map[int]Product{},
+			}
+
+			app.products[23] = Product{
+				ID:    23,
+				Name:  "CBR 650R",
+				Price: 8000,
+				Stock: test.stock,
+			}
+
+			orderItems := []OrderItem{}
+			orderItems = append(orderItems, OrderItem{
+				ProductID: test.productID,
+				Quantity:  test.quantity,
+			})
+
+			order, err := app.createOrder(orderItems)
+
+			if test.wantErr && err == nil {
+				t.Error("Expected an error but got nil")
+			}
+
+			if !test.wantErr && err != nil {
+				errMsg := fmt.Sprintf("Did not expected an error but got: %v", err)
+				t.Error(errMsg)
+			}
+
+			if !test.wantErr && err == nil {
+				if order.Status != "pending" {
+					t.Error("Order status should have been pending")
+				}
 			}
 		})
 	}

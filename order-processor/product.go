@@ -6,18 +6,18 @@ import (
 )
 
 type Product struct {
-	ID int	
-	Name string	
-	Price float64	
-	Stock int	
+	ID    int
+	Name  string
+	Price float64
+	Stock int
 }
 
 func (app *App) addProduct(name string, price float64, stock int) {
 	id := app.nextProductID
 
 	newProduct := Product{
-		ID: id,
-		Name: name,
+		ID:    id,
+		Name:  name,
 		Price: price,
 		Stock: stock,
 	}

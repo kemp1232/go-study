@@ -23,8 +23,8 @@ func TestGetProductbyID(t *testing.T) {
 	}
 
 	app.products[123] = Product{
-		ID: 123,
-		Name: "CBR 650R",
+		ID:    123,
+		Name:  "CBR 650R",
 		Price: 8000,
 		Stock: 20,
 	}
@@ -34,7 +34,7 @@ func TestGetProductbyID(t *testing.T) {
 		t.Errorf("Did not Expect an error, got %v", err)
 	}
 
-	if product == (Product{}){
+	if product == (Product{}) {
 		t.Errorf("Expected product to have value, got %v", product)
 	}
 }
