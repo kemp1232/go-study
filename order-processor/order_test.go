@@ -317,8 +317,9 @@ func TestCreateOrder(t *testing.T) {
 		wantErr   bool
 	}{
 		{"Invalid Product ID", 123, 10, 10, true},
-		{"Invalid Quantity", 23, 11, 10, true},
+		{"Insuficient stock", 23, 11, 10, true},
 		{"Negative Quantity", 23, -11, 10, true},
+		{"Zero Quantity", 23, 0, 10, true},
 		{"Create Order", 23, 10, 10, false},
 	}
 
