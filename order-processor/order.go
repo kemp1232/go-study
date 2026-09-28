@@ -35,7 +35,13 @@ func (app *App) createOrder(
 		What status should it have?
 	*/
 
+
+	if len(orderItems) < 1 {
+		return Order{}, errors.New("Order does not have items")
+	}
+
 	var total float64
+	productIds := map[int]int{}
 	for _, orderItem := range orderItems {
 		product, err := app.getProductByID(orderItem.ProductID)
 
@@ -54,6 +60,13 @@ func (app *App) createOrder(
 		if product.Stock-orderItem.Quantity < 0 {
 			return Order{}, errors.New("Not enough stock for the quantity inputted.")
 		}
+
+		_, exists := productIds[orderItem.ProductID]
+		if exists {
+			return Order{}, errors.New("Duplicate Product ID")
+		}
+
+		productIds[orderItem.ProductID] = orderItem.ProductID
 
 		total += product.Price * float64(orderItem.Quantity)
 	}
@@ -134,8 +147,8 @@ func (app *App) completeOrder(orderID int) (Order, error) {
 			return Order{}, errors.New(errMsg)
 		}
 
-		_, exists = productIds[orderItem.ProductID]
-		if exists {
+		_, idExists := productIds[orderItem.ProductID]
+		if idExists {
 			return Order{}, errors.New("Invalid Order, Duplicate Product ID")
 		}
 

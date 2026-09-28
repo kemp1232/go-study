@@ -318,6 +318,7 @@ func TestCreateOrder(t *testing.T) {
 	}{
 		{"Invalid Product ID", 123, 10, 10, true},
 		{"Invalid Quantity", 23, 11, 10, true},
+		{"Negative Quantity", 23, -11, 10, true},
 		{"Create Order", 23, 10, 10, false},
 	}
 
@@ -326,6 +327,7 @@ func TestCreateOrder(t *testing.T) {
 			app := App{
 				orders:   map[int]Order{},
 				products: map[int]Product{},
+				nextOrderID: 1,
 			}
 
 			app.products[23] = Product{
@@ -355,6 +357,10 @@ func TestCreateOrder(t *testing.T) {
 			if !test.wantErr && err == nil {
 				if order.Status != "pending" {
 					t.Error("Order status should have been pending")
+				}
+
+				if app.nextOrderID != 2 {
+					t.Error("nextOrderID was not properly incremented")
 				}
 			}
 		})
