@@ -12,9 +12,16 @@ type Product struct {
 	Stock int
 }
 
-func (app *App) addProduct(name string, price float64, stock int) {
-	id := app.nextProductID
+func (app *App) addProduct(name string, price float64, stock int) (Product, error) {
+	if price <= 0 {
+		return Product{}, errors.New("Price must be greater than 0.")
+	}
 
+	if stock < 0 {
+		return Product{}, errors.New("Stock must not be negative.")
+	}
+
+	id := app.nextProductID
 	newProduct := Product{
 		ID:    id,
 		Name:  name,
@@ -24,6 +31,7 @@ func (app *App) addProduct(name string, price float64, stock int) {
 
 	app.products[id] = newProduct
 	app.nextProductID++
+	return newProduct, nil
 }
 
 func (app *App) listProducts() {

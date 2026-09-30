@@ -200,7 +200,7 @@ func TestCompletedOrder(t *testing.T) {
 			)
 
 			app.orders[2] = Order{
-				ID:     1,
+				ID:     2,
 				Items:  duplicateOrderItems,
 				Total:  8000,
 				Status: test.orderStatus,
@@ -326,15 +326,17 @@ func TestCreateOrder(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			app := App{
-				orders:   map[int]Order{},
-				products: map[int]Product{},
+				orders:      map[int]Order{},
+				products:    map[int]Product{},
 				nextOrderID: 1,
 			}
+
+			var productPrice float64 = 8000
 
 			app.products[23] = Product{
 				ID:    23,
 				Name:  "CBR 650R",
-				Price: 8000,
+				Price: productPrice,
 				Stock: test.stock,
 			}
 
@@ -363,7 +365,56 @@ func TestCreateOrder(t *testing.T) {
 				if app.nextOrderID != 2 {
 					t.Error("nextOrderID was not properly incremented")
 				}
+
+				var total float64
+				for _, orderItem := range order.Items {
+					total += float64(orderItem.Quantity) * productPrice
+				}
+
+				if order.Total != total {
+					t.Error("Order total is incorrect")
+				}
 			}
 		})
+	}
+}
+
+func TestCreateOrderEmpty(t *testing.T) {
+	app := App{
+		orders:   map[int]Order{},
+		products: map[int]Product{},
+	}
+
+	_, err := app.createOrder([]OrderItem{})
+
+	if err == nil {
+		t.Error("expected error for empty order")
+	}
+}
+
+func TestCreateOrderDuplicateProductID(t *testing.T) {
+	app := App{
+		orders:   map[int]Order{},
+		products: map[int]Product{},
+	}
+
+	var productPrice float64 = 8000
+
+	app.products[23] = Product{
+		ID:    23,
+		Name:  "CBR 650R",
+		Price: productPrice,
+		Stock: 10,
+	}
+
+	items := []OrderItem{
+		{ProductID: 23, Quantity: 2},
+		{ProductID: 23, Quantity: 3},
+	}
+
+	_, err := app.createOrder(items)
+
+	if err == nil {
+		t.Error("expected error for empty order")
 	}
 }

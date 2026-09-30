@@ -130,30 +130,21 @@ func (app *App) handleAddProduct() {
 	fmt.Scan(&name)
 	fmt.Println()
 
-	for {
-		fmt.Print("Price: ")
-		fmt.Scan(&price)
+	fmt.Print("Price: ")
+	fmt.Scan(&price)
+	fmt.Println()
 
-		if price > 0 {
-			break
-		}
+	fmt.Print("Stock: ")
+	fmt.Scan(&stock)
+	fmt.Println()
 
-		fmt.Println("Price must be greater than 0.")
+	product, err := app.addProduct(name, price, stock)
+	if err != nil {
+		fmt.Println(err)
+		return
 	}
 
-	for {
-		fmt.Print("Stock: ")
-		fmt.Scan(&stock)
-		fmt.Println()
-
-		if stock >= 0 {
-			break
-		}
-
-		fmt.Println("Stock must not be negative.")
-	}
-
-	app.addProduct(name, price, stock)
+	fmt.Println("Created product:", product)
 }
 
 func (app *App) handleListProducts() {
