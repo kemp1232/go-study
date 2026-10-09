@@ -75,7 +75,7 @@ func (app *App) listOrders() map[int]Order {
 func (app *App) getOrder(orderID int) (Order, error) {
 	order, exists := app.orders[orderID]
 	if !exists {
-		return Order{}, errors.New("Order does not exist.")
+		return Order{}, ErrNotFound
 	}
 
 	return order, nil

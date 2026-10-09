@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 )
 type Product struct {
 	ID       int     `json:"id"`
@@ -12,6 +11,8 @@ type Product struct {
 	Quantity int     `json:"quantity"`
 }
 
+
+
 func (app *App) listProducts() map[int]Product {
 	return app.products
 }
@@ -19,8 +20,7 @@ func (app *App) listProducts() map[int]Product {
 func (app *App) getProductByID(productID int) (Product, error) {
 	product, exists := app.products[productID]
 	if !exists {
-		errMsg := fmt.Sprintf("Product ID: %v does not exist:", productID)
-		return Product{}, errors.New(errMsg)
+		return Product{}, ErrNotFound
 	}
 
 	return product, nil
@@ -53,7 +53,7 @@ func (app *App) editProduct(productID int, productRequest ProductRequest) (Produ
 	product, exists := app.products[productID]
 
 	if !exists {
-		return Product{}, errors.New("Product ID is invalid.")
+		return Product{}, ErrNotFound
 	}
 	
 	if productRequest.Price <= 0 {
@@ -81,7 +81,7 @@ func (app *App) deleteProduct(productID int) (bool, error) {
 	product, exists := app.products[productID]
 
 	if !exists {
-		return false, errors.New("Product ID is invalid.")
+		return false, ErrNotFound
 	}
 	
 	delete(app.products, product.ID)

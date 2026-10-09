@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -27,9 +28,10 @@ type ProductRequest struct {
 
 type OrderRequest struct {
 	Items  []OrderItem `json:"items"`
-	Total  float64     `json:"total"`
-	Status string      `json:"status"`
 }
+
+var ErrNotFound = errors.New("resource not found")
+var ErrInvalidBody = errors.New("invalid body")
 
 func main() {
 	app := App{
@@ -76,6 +78,12 @@ func main() {
 }
 
 func (app *App) handleRequest() {
+	mux := app.routes()
+	fmt.Println("Server running at localhost:8080")
+	http.ListenAndServe(":8080", mux)
+}
+
+func (app *App) routes() http.Handler {
 	mux := http.NewServeMux()
 
 	// Product routes
@@ -86,14 +94,12 @@ func (app *App) handleRequest() {
 	mux.HandleFunc("DELETE /products/{id}", app.handleDeleteProduct)
 
 	// Order routes
-	mux.HandleFunc("POST /orders", app.handleCreateOrder)
-	mux.HandleFunc("GET /orders", app.HandleGetOrderList)
+	mux.HandleFunc("GET /orders", app.handleGetOrderList)
 	mux.HandleFunc("GET /orders/{id}", app.handleGetOrder)
+	mux.HandleFunc("POST /orders", app.handleCreateOrder)
 	mux.HandleFunc("POST /orders/{id}/complete", app.handleOrderComplete)
 	mux.HandleFunc("POST /orders/{id}/cancel", app.handleOrderCancel)
-
-	fmt.Println("Server running at localhost:8080")
-	http.ListenAndServe(":8080", mux)
+	return mux
 }
 
 func (app *App) handleListProducts(w http.ResponseWriter, r *http.Request) {
@@ -118,6 +124,15 @@ func (app *App) handleGetProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := app.getProductByID(id)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Product does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
 			Message: "Something went wrong.",
 		}
@@ -152,6 +167,7 @@ func (app *App) handleCreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(product)
 }
 
@@ -182,9 +198,17 @@ func (app *App) handleUpdateProduct(w http.ResponseWriter, r *http.Request) {
 
 	product, err := app.editProduct(id, body)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Product does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
-			Message: "Failed to update product",
+			Message: "Something went wrong.",
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseMsg)
@@ -211,9 +235,17 @@ func (app *App) handleDeleteProduct(w http.ResponseWriter, r *http.Request) {
 
 	isDeleted, err := app.deleteProduct(id)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Product does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
-			Message: "Failed to delete product",
+			Message: "Something went wrong.",
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseMsg)
@@ -249,10 +281,11 @@ func (app *App) handleCreateOrder(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(ResponseMsg)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(order)
 }
 
-func (app *App) HandleGetOrderList(w http.ResponseWriter, r *http.Request) {
+func (app *App) handleGetOrderList(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	fmt.Println("Handle List Orders")
 
@@ -278,6 +311,15 @@ func (app *App) handleGetOrder(w http.ResponseWriter, r *http.Request) {
 
 	order, err := app.getOrder(id)
 	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Order does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
 			Message: "Something went wrong.",
 		}
@@ -306,9 +348,17 @@ func (app *App) handleOrderComplete(w http.ResponseWriter, r *http.Request) {
 
 	order, err := app.completeOrder(id)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Order does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
-			Message: "Failed to complete order",
+			Message: "Something went wrong.",
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseMsg)
@@ -336,9 +386,17 @@ func (app *App) handleOrderCancel(w http.ResponseWriter, r *http.Request) {
 
 	order, err := app.cancelOrder(id)
 	if err != nil {
-		fmt.Println("Error: ", err)
+		if errors.Is(err, ErrNotFound) {
+			ResponseMsg := ResponseMsg{
+				Message: "Order does not exist.",
+			}
+			w.WriteHeader(http.StatusNotFound)
+			json.NewEncoder(w).Encode(ResponseMsg)
+			return
+		}
+
 		ResponseMsg := ResponseMsg{
-			Message: "Failed to cancel order",
+			Message: "Something went wrong.",
 		}
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(ResponseMsg)
