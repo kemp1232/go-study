@@ -17,7 +17,7 @@ type OrderItem struct {
 	Quantity  int `json:"quantity"`
 }
 
-codefunc (app *App) createOrder(order OrderRequest) (Order, error) {
+func (app *App) createOrder(order OrderRequest) (Order, error) {
 	app.mu.Lock()
     defer app.mu.Unlock()
 
