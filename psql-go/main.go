@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -26,33 +26,46 @@ type ResponseMsg struct {
 }
 
 type App struct {
-	conn          *pgx.Conn
+	pool          *pgxpool.Pool
 }
 
 var ErrDBQueryIssue = errors.New("db query issue")
 func main() {
 	app := App{}
 
-	app.setupDBConnection()
-	defer app.conn.Close(context.Background())
+	if err := app.setupDBConnection(false); err != nil {
+		log.Fatal(err)
+	}
+	defer app.pool.Close()
 
 	app.handleRequest()
 }
 
-func (app *App) setupDBConnection() {
+func (app *App) setupDBConnection(isTest bool) error {
 	// Load the .env file from the current directory
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		return fmt.Errorf("load .env: %w", err)
 	}
 
-	conn, err := pgx.Connect(context.Background(), os.Getenv("DATABASE_URL"))
+	databaseURL := os.Getenv("DATABASE_URL")
+	if isTest {
+		databaseURL = os.Getenv("DATABASE_URL_TEST")
+	}
+
+	conn, err := pgxpool.New(context.Background(), databaseURL)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
-		os.Exit(1)
+		return errors.New("Unable to connect to database")
 	}
+	app.pool = conn
+	if err := app.pool.Ping(context.Background()); err != nil {
+		app.pool.Close()
+		app.pool = nil
+		return fmt.Errorf("ping database: %w", err)
+	}	
 
-	app.conn = conn
+	return nil
 }
 
 func (app *App) handleRequest() {
@@ -74,7 +87,7 @@ func (app *App) routes() http.Handler {
 func (app *App) handleListProducts(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("List Products")
 	w.Header().Set("Content-Type", "application/json")
-	products, err := app.listProducts(r)
+	products, err := app.listProducts(r.Context())
 	if err != nil {
 		if errors.Is(err, ErrDBQueryIssue) {
 			ResponseMsg := ResponseMsg{

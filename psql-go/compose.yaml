@@ -10,5 +10,17 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  postgres-test:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: orderapp
+      POSTGRES_PASSWORD: devpassword
+      POSTGRES_DB: order_processor_test
+    ports:
+      - "127.0.0.1:5444:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+
 volumes:
   postgres_data:
+  postgres_test_data:

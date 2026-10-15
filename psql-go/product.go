@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
 	"time"
 )
 
@@ -16,16 +15,16 @@ type Product struct {
 	Quantity int     `json:"quantity"`
 }
 
-func (app *App) listProducts(r *http.Request) ([]Product, error) {
-	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+func (app *App) listProducts(r context.Context) ([]Product, error) {
+	ctx, cancel := context.WithTimeout(r, 5*time.Second)
 	defer cancel()
 	products := []Product{}
 
 	query := `SELECT id, name, category, price, quantity from products;`
-    rows, err := app.conn.Query(ctx, query)
+    rows, err := app.pool.Query(ctx, query)
 	if err != nil {
 		fmt.Println("err", err)
-		return nil, ErrDBQueryIssue
+		return nil, fmt.Errorf("%w: %v", ErrDBQueryIssue, err)
 	}
 	defer rows.Close()
 
@@ -41,14 +40,14 @@ func (app *App) listProducts(r *http.Request) ([]Product, error) {
 		)
 
 		if err != nil {
-			return nil, ErrDBQueryIssue
+			return nil, fmt.Errorf("%w: %v", ErrDBQueryIssue, err)
 		}
 
 		products = append(products, product)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, ErrDBQueryIssue
+		return nil, fmt.Errorf("%w: %v", ErrDBQueryIssue, err)
 	}
 
 	return products, nil
@@ -71,7 +70,7 @@ func (app *App) addProduct(ctx context.Context, productRequest ProductRequest) (
 	`
 
 	var product Product
-	err := app.conn.QueryRow(
+	err := app.pool.QueryRow(
 		ctx,
 		query,
 		productRequest.Name,
@@ -87,7 +86,7 @@ func (app *App) addProduct(ctx context.Context, productRequest ProductRequest) (
 	)
 
 	if err != nil {
-		return Product{}, ErrDBQueryIssue
+		return Product{}, fmt.Errorf("%w: %v", ErrDBQueryIssue, err)
 	}
 
 	return product, nil
